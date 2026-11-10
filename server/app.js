@@ -6,6 +6,10 @@ const errorHandler = require("./middlewares/errorHandler");
 
 const app = express();
 
+// Server nanti berjalan di belakang Caddy (proxy), jadi alamat IP pemain
+// dibaca dari header proxy. Tanpa ini, semua pemain dianggap satu IP.
+app.set("trust proxy", 1);
+
 app.use(cors({ origin: config.clientUrls }));
 app.use(express.json());
 
