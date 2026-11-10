@@ -15,7 +15,11 @@ const config = {
   maxPlayers: Number(process.env.MAX_PLAYERS) || 10,
 
   geminiApiKey: process.env.GEMINI_API_KEY || "",
+  geminiModel: process.env.GEMINI_MODEL || "gemini-3.8-flash",
+  geminiFallbackModel: process.env.GEMINI_FALLBACK_MODEL || "",
+
   grokApiKey: process.env.GROK_API_KEY || "",
+  grokModel: process.env.GROK_MODEL || "grok-4.3",
 };
 
 module.exports = config;
