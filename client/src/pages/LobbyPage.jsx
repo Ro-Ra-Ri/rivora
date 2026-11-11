@@ -1,9 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import BlobAvatar from "../components/BlobAvatar";
+import {
+  IconAlert,
+  IconCheck,
+  IconCopy,
+  IconCrown,
+  IconLogout,
+  IconPlay,
+  IconUsers,
+} from "../components/Icons";
+import Mascot from "../components/Mascot";
 import { useTheme } from "../context/ThemeContext";
 import { emitLeaveRoom, emitStartGame } from "../socket";
 import { leaveAndReset } from "../store/gameSlice";
+import { colorFor, getSkin } from "../theme/skin";
 import {
   playClick,
   playLobbyChime,
@@ -13,6 +25,7 @@ import {
 
 export default function LobbyPage() {
   const { isDark } = useTheme();
+  const skin = getSkin(isDark);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { room, player, config, error } = useSelector((state) => state.game);
@@ -74,559 +87,429 @@ export default function LobbyPage() {
 
   const emptyMinSlots = Array.from({ length: neededCount }, (_, idx) => idx);
 
-  const primaryCardSurface = isDark
-    ? "bg-[#161829] border-2 border-indigo-500/60 shadow-[0_24px_60px_rgba(0,0,0,0.8),0_0_32px_rgba(99,102,241,0.18)]"
-    : "bg-white border-2 border-indigo-300 shadow-[0_18px_45px_rgba(30,41,59,0.12)]";
-
-  const secondaryCardSurface = isDark
-    ? "bg-[#161829] border-2 border-[#3a3f66] shadow-[0_24px_60px_rgba(0,0,0,0.8)]"
-    : "bg-white border-2 border-slate-300 shadow-[0_18px_45px_rgba(30,41,59,0.1)]";
-
-  const subSurface = isDark
-    ? "bg-[#20233a] border-2 border-[#3b4068]"
-    : "bg-slate-50 border-2 border-slate-200";
-
   return (
-    <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 pb-14 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-      {/* Kolom Kiri: Kode Room Command Ticket & Detail Kuis */}
-      <section
-        aria-labelledby="lobby-code-title"
-        className={`lg:col-span-5 rounded-3xl p-6 sm:p-7 flex flex-col gap-5 relative overflow-hidden ${primaryCardSurface}`}
-      >
-        <div
-          aria-hidden="true"
-          className="absolute top-0 inset-x-0 h-2 bg-indigo-500"
-        />
-
-        <div>
-          <div className="flex items-center justify-between pt-1">
+    <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* ======================================================== */}
+        {/* KOLOM KIRI: Room Code Ticket (High-Contrast Lime Plop)    */}
+        {/* ======================================================== */}
+        <section
+          aria-labelledby="lobby-code-title"
+          className="lg:col-span-5 rounded-[40px] p-6 sm:p-8 flex flex-col gap-5 relative overflow-hidden transition-all duration-300"
+          style={{
+            backgroundColor: skin.lime,
+            color: skin.navy,
+            border: "3px solid #0E1236",
+            boxShadow: skin.limeCardShadow,
+          }}
+        >
+          {/* Character Face at top */}
+          <div className="flex flex-col items-center text-center">
+            <div className={players.length >= minPlayers ? "animate-float-slow" : ""}>
+              <Mascot
+                variant="face"
+                size={110}
+                mood={players.length >= minPlayers ? "happy" : "idle"}
+              />
+            </div>
             <span
               id="lobby-code-title"
-              className={`font-['JetBrains_Mono',monospace] text-xs font-bold tracking-wider uppercase ${
-                isDark ? "text-indigo-200" : "text-indigo-800"
-              }`}
+              className="text-xs font-display font-bold uppercase tracking-widest text-[#0E1236] mt-1"
             >
               Kode Akses Room
             </span>
-            <span
-              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg font-['JetBrains_Mono',monospace] text-[10px] font-bold border-2 ${
-                isDark
-                  ? "bg-emerald-500/20 border-emerald-400 text-emerald-200"
-                  : "bg-emerald-50 border-emerald-400 text-emerald-800"
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              AKTIF
-            </span>
           </div>
 
-          <div
-            className={`mt-3 p-4 sm:px-5 rounded-2xl flex items-center justify-between gap-3 ${subSurface}`}
-          >
-            <div className="flex items-center gap-1.5">
-              {String(room.code || "")
-                .split("")
-                .map((char, idx) => (
-                  <span
-                    key={idx}
-                    className={`w-10 h-12 sm:w-11 sm:h-13 rounded-xl border-2 border-b-4 font-['JetBrains_Mono',monospace] text-xl sm:text-2xl font-bold inline-flex items-center justify-center ${
-                      isDark
-                        ? "bg-[#121424] border-indigo-400 text-white shadow-[0_0_15px_rgba(99,102,241,0.3)]"
-                        : "bg-white border-indigo-400 text-indigo-700 shadow-xs"
-                    }`}
-                  >
-                    {char}
-                  </span>
-                ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={handleCopyCode}
-              aria-label="Salin kode room"
-              className={`min-h-[44px] px-4 py-2 rounded-xl border-2 border-b-4 text-xs font-bold inline-flex items-center gap-1.5 transition-all duration-200 cursor-pointer hover:-translate-y-0.5 shrink-0 ${
-                copied
-                  ? isDark
-                    ? "bg-emerald-600 border-emerald-300 text-white"
-                    : "bg-emerald-600 border-emerald-800 text-white"
-                  : isDark
-                    ? "bg-indigo-600 border-indigo-300 text-white hover:bg-indigo-500 shadow-[0_6px_18px_rgba(79,70,229,0.45)]"
-                    : "bg-indigo-600 border-indigo-800 text-white hover:bg-indigo-700"
-              }`}
-            >
-              {copied ? (
-                <>
-                  <svg
-                    width="15"
-                    height="15"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  <span>Tersalin</span>
-                </>
-              ) : (
-                <>
-                  <svg
-                    width="15"
-                    height="15"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                  </svg>
-                  <span>Salin</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          <p
-            className={`mt-2.5 text-xs sm:text-sm font-medium ${
-              isDark ? "text-zinc-300" : "text-slate-600"
-            }`}
-          >
-            Bagikan kode 5 karakter di atas agar teman-temanmu dapat bergabung
-            ke sesi ini.
-          </p>
-        </div>
-
-        {/* Badge Soal Cadangan jika AI Gagal / Limit */}
-        {room.usedFallback && (
-          <div
-            role="status"
-            className={`p-4 rounded-2xl border-2 flex flex-col gap-1.5 ${
-              isDark
-                ? "bg-amber-950/60 border-amber-400 text-amber-100"
-                : "bg-amber-50 border-amber-400 text-amber-950"
-            }`}
-          >
-            <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-amber-400">
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              </svg>
-              <span>
-                Soal cadangan: {room.fallbackTopic || "JavaScript dasar"}
-              </span>
-            </div>
-            <p className="text-xs sm:text-sm font-medium">
-              Layanan AI sedang sibuk atau mencapai batas kuota. Permainan
-              otomatis memakai paket soal cadangan lokal.
-              {room.requestedQuestionCount > room.totalQuestions
-                ? ` (${room.totalQuestions} soal tersedia dari ${room.requestedQuestionCount} yang diminta).`
-                : ""}
-            </p>
-          </div>
-        )}
-
-        {/* 4 Kartu Spesifikasi Room yang Mencolok */}
-        <div className="grid grid-cols-2 gap-3">
-          <div
-            className={`p-3.5 rounded-2xl border-2 border-b-4 flex flex-col gap-1 transition-transform duration-200 hover:-translate-y-0.5 ${
-              isDark
-                ? "bg-[#1d2038] border-indigo-400/70 text-white"
-                : "bg-indigo-50/75 border-indigo-300 text-slate-900"
-            }`}
-          >
-            <span
-              className={`text-[11px] font-bold uppercase tracking-wider ${
-                isDark ? "text-indigo-200" : "text-indigo-700"
-              }`}
-            >
-              Topik Kuis
-            </span>
-            <strong className="text-sm sm:text-base font-bold truncate">
-              {room.topic}
-            </strong>
-          </div>
-
-          <div
-            className={`p-3.5 rounded-2xl border-2 border-b-4 flex flex-col gap-1 transition-transform duration-200 hover:-translate-y-0.5 ${
-              isDark
-                ? "bg-[#2a2116] border-amber-400/70 text-white"
-                : "bg-amber-50/75 border-amber-300 text-slate-900"
-            }`}
-          >
-            <span
-              className={`text-[11px] font-bold uppercase tracking-wider ${
-                isDark ? "text-amber-200" : "text-amber-800"
-              }`}
-            >
-              Tingkat Kesulitan
-            </span>
-            <strong className="text-sm sm:text-base font-bold text-amber-400">
-              {room.difficulty}
-            </strong>
-          </div>
-
-          <div
-            className={`p-3.5 rounded-2xl border-2 border-b-4 flex flex-col gap-1 transition-transform duration-200 hover:-translate-y-0.5 ${
-              isDark
-                ? "bg-[#172638] border-sky-400/70 text-white"
-                : "bg-sky-50/75 border-sky-300 text-slate-900"
-            }`}
-          >
-            <span
-              className={`text-[11px] font-bold uppercase tracking-wider ${
-                isDark ? "text-sky-200" : "text-sky-800"
-              }`}
-            >
-              Jumlah Soal
-            </span>
-            <strong className="text-sm sm:text-base font-bold text-sky-400">
-              {room.totalQuestions} Soal
-            </strong>
-          </div>
-
-          <div
-            className={`p-3.5 rounded-2xl border-2 border-b-4 flex flex-col gap-1 transition-transform duration-200 hover:-translate-y-0.5 ${
-              isDark
-                ? "bg-[#142925] border-emerald-400/70 text-white"
-                : "bg-emerald-50/75 border-emerald-300 text-slate-900"
-            }`}
-          >
-            <span
-              className={`text-[11px] font-bold uppercase tracking-wider ${
-                isDark ? "text-emerald-200" : "text-emerald-800"
-              }`}
-            >
-              Durasi Jawab
-            </span>
-            <strong className="text-sm sm:text-base font-bold text-emerald-400">
-              {Math.round((config.questionTimeMs || 20000) / 1000)} Detik / Soal
-            </strong>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={handleLeaveRoom}
-          className={`min-h-[46px] px-4 py-2.5 rounded-xl border-2 text-xs sm:text-sm font-bold inline-flex items-center justify-center gap-2 transition-all cursor-pointer ${
-            isDark
-              ? "bg-[#20233a] border-[#3d426b] text-zinc-200 hover:bg-rose-950/60 hover:border-rose-400 hover:text-rose-200"
-              : "bg-slate-100 border-slate-300 text-slate-800 hover:bg-rose-50 hover:border-rose-300 hover:text-rose-700"
-          }`}
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-            <polyline points="16 17 21 12 16 7" />
-            <line x1="21" y1="12" x2="9" y2="12" />
-          </svg>
-          <span>Keluar dari Room</span>
-        </button>
-      </section>
-
-      {/* Kolom Kanan: Daftar Pemain Realtime & Kontrol Mulai */}
-      <section
-        aria-labelledby="roster-heading"
-        className={`lg:col-span-7 rounded-3xl p-6 sm:p-7 flex flex-col gap-5 relative overflow-hidden ${secondaryCardSurface}`}
-      >
-        <div
-          aria-hidden="true"
-          className="absolute top-0 inset-x-0 h-2 bg-emerald-500"
-        />
-
-        <div className="flex items-start justify-between gap-4 pt-1">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h1
-                id="roster-heading"
-                className="font-['Space_Grotesk',sans-serif] text-xl sm:text-2xl font-bold tracking-tight"
-              >
-                Lobby Pemain
-              </h1>
-              <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
-              </span>
-            </div>
-            <p
-              className={`text-xs sm:text-sm font-medium mt-1 ${
-                isDark ? "text-zinc-300" : "text-slate-600"
-              }`}
-            >
-              Dibutuhkan minimal {minPlayers} pemain (maks. {maxPlayers} pemain)
-              untuk memulai kuis.
-            </p>
-          </div>
-
-          <div
-            aria-live="polite"
-            className={`px-4 py-2 rounded-xl border-2 font-['JetBrains_Mono',monospace] font-bold tabular-nums inline-flex items-baseline gap-1 shrink-0 ${
-              isDark
-                ? "bg-[#20233a] border-indigo-400/60 text-white"
-                : "bg-indigo-50 border-indigo-300 text-indigo-950"
-            }`}
-          >
-            <span className="text-lg text-indigo-400">{players.length}</span>
-            <span className="opacity-50">/</span>
-            <span className="text-xs opacity-90">{maxPlayers}</span>
-          </div>
-        </div>
-
-        {/* Readiness Progress Bar */}
-        <div className={`p-4 rounded-2xl flex flex-col gap-2 ${subSurface}`}>
-          <div className="flex items-center justify-between text-xs font-['JetBrains_Mono',monospace] font-bold">
-            <span className={isDark ? "text-zinc-200" : "text-slate-800"}>
-              KUOTA MULAI PERTANDINGAN
-            </span>
-            <span
-              className={
-                players.length >= minPlayers
-                  ? "text-emerald-400"
-                  : "text-indigo-400"
-              }
-            >
-              {players.length} / {minPlayers} MINIMAL PEMAIN
-            </span>
-          </div>
-          <div
-            className={`w-full h-2.5 rounded-full overflow-hidden border ${
-              isDark
-                ? "bg-[#0d0e1a] border-[#343859]"
-                : "bg-slate-200 border-slate-300"
-            }`}
-          >
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                players.length >= minPlayers
-                  ? "bg-emerald-500"
-                  : "bg-indigo-500"
-              }`}
-              style={{ width: `${readinessPercent}%` }}
-            />
-          </div>
-        </div>
-
-        {error && (
-          <div
-            role="alert"
-            className={`p-3.5 rounded-xl border-2 text-xs sm:text-sm font-bold ${
-              isDark
-                ? "bg-rose-950/70 border-rose-500 text-rose-100"
-                : "bg-rose-50 border-rose-400 text-rose-900"
-            }`}
-          >
-            {error.message}
-          </div>
-        )}
-
-        <ul
-          aria-label="Daftar pemain di lobby"
-          className="grid grid-cols-1 sm:grid-cols-2 gap-3.5"
-        >
-          {players.map((item, idx) => {
-            const isSelf = player?.id === item.id;
-            const itemIsHost = item.isHost || item.id === room.hostId;
-
-            return (
-              <li
-                key={item.id}
-                className={`p-4 rounded-2xl border-2 border-b-4 flex items-center gap-3.5 transition-all duration-200 hover:-translate-y-0.5 ${
-                  isSelf
-                    ? isDark
-                      ? "bg-indigo-600/25 border-indigo-400 shadow-[0_0_24px_rgba(99,102,241,0.25)]"
-                      : "bg-indigo-50 border-indigo-500 shadow-xs"
-                    : subSurface
-                }`}
-              >
-                <div
-                  aria-hidden="true"
-                  className={`w-11 h-11 rounded-xl font-['Space_Grotesk',sans-serif] font-bold text-sm inline-flex items-center justify-center shrink-0 border-2 ${
-                    isSelf
-                      ? "bg-indigo-600 border-indigo-300 text-white"
-                      : isDark
-                        ? "bg-[#121424] border-[#3d426b] text-white"
-                        : "bg-slate-900 border-slate-700 text-white"
-                  }`}
-                >
-                  {item.name.slice(0, 2).toUpperCase()}
-                </div>
-
-                <div className="min-w-0 flex flex-col gap-0.5">
-                  <div className="flex items-center flex-wrap gap-1.5">
-                    <span className="font-bold text-sm sm:text-base truncate">
-                      {item.name}
-                    </span>
-                    {isSelf && (
-                      <span
-                        className={`px-2 py-0.5 rounded-md font-['JetBrains_Mono',monospace] text-[10px] font-bold border ${
-                          isDark
-                            ? "bg-indigo-500/35 text-white border-indigo-300"
-                            : "bg-indigo-600 text-white border-indigo-700"
-                        }`}
-                      >
-                        KAMU
-                      </span>
-                    )}
-                    {itemIsHost && (
-                      <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-['JetBrains_Mono',monospace] text-[10px] font-bold border ${
-                          isDark
-                            ? "bg-amber-500/30 text-amber-200 border-amber-400"
-                            : "bg-amber-100 text-amber-900 border-amber-400"
-                        }`}
-                      >
-                        HOST
-                      </span>
-                    )}
-                  </div>
-                  <span
-                    className={`text-xs font-semibold inline-flex items-center gap-1.5 ${
-                      isDark ? "text-zinc-300" : "text-slate-600"
-                    }`}
-                  >
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                    Pemain #{idx + 1} · Siap
-                  </span>
-                </div>
-              </li>
-            );
-          })}
-
-          {emptyMinSlots.map((slotIndex) => (
-            <li
-              key={`empty-${slotIndex}`}
-              aria-hidden="true"
-              className={`p-4 rounded-2xl border-2 border-dashed flex items-center gap-3.5 ${
-                isDark
-                  ? "bg-[#131525] border-[#3a3f66] text-zinc-300"
-                  : "bg-slate-50 border-slate-300 text-slate-600"
-              }`}
-            >
-              <div
-                className={`relative w-11 h-11 rounded-xl border-2 border-dashed font-['Space_Grotesk',sans-serif] font-bold text-xs inline-flex items-center justify-center shrink-0 ${
-                  isDark
-                    ? "border-indigo-400/50 text-indigo-300"
-                    : "border-indigo-300 text-indigo-600"
-                }`}
-              >
-                <span className="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-ping" />
-              </div>
-              <div className="min-w-0 flex flex-col gap-0.5">
-                <span className="font-bold text-xs sm:text-sm truncate">
-                  Menunggu pemain...
-                </span>
-                <span className="text-[11px] font-medium opacity-80">
-                  Slot minimal #{players.length + slotIndex + 1}
-                </span>
-              </div>
-            </li>
-          ))}
-        </ul>
-
-        <div
-          className={`pt-4 border-t-2 ${
-            isDark ? "border-[#323659]" : "border-slate-200"
-          }`}
-        >
-          {isHost ? (
-            <div className="flex flex-col gap-3">
-              <div>
-                {canStart ? (
-                  <span className="text-xs sm:text-sm font-bold text-emerald-400 inline-flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-                    Jumlah pemain sudah mencukupi ({players.length} pemain).
-                    Siap memulai kuis!
-                  </span>
-                ) : (
-                  <span
-                    className={`text-xs sm:text-sm font-medium ${
-                      isDark ? "text-zinc-300" : "text-slate-600"
-                    }`}
-                  >
-                    Menunggu minimal {minPlayers} pemain untuk memulai (kurang{" "}
-                    {neededCount} pemain lagi).
-                  </span>
-                )}
-              </div>
-
-              <button
-                type="button"
-                disabled={!canStart}
-                onClick={handleStartGame}
-                className={`min-h-[54px] px-5 py-3 rounded-xl font-bold text-sm inline-flex items-center justify-center gap-2.5 border-2 border-b-4 transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-45 disabled:cursor-not-allowed disabled:hover:translate-y-0 ${
-                  isDark
-                    ? "bg-emerald-600 text-white hover:bg-emerald-500 border-emerald-300 shadow-[0_10px_30px_rgba(16,185,129,0.4)]"
-                    : "bg-emerald-600 text-white hover:bg-emerald-700 border-emerald-800 shadow-sm"
-                }`}
-              >
-                <span>Mulai Pertandingan Sekarang</span>
-                <svg
-                  width="17"
-                  height="17"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <polygon points="5 3 19 12 5 21 5 3" />
-                </svg>
-              </button>
-            </div>
-          ) : (
-            <div
-              role="status"
-              aria-live="polite"
-              className={`p-4 rounded-2xl flex items-center gap-3.5 ${subSurface}`}
-            >
+          {/* 5-Digit Chunky Code Tiles (Bold 3D Tiles) */}
+          <div className="flex items-center justify-center gap-2 sm:gap-2.5">
+            {room.code.split("").map((ch, idx) => (
               <span
-                aria-hidden="true"
-                className="w-5 h-5 rounded-full border-2 border-indigo-400/30 border-t-indigo-400 animate-spin shrink-0"
-              />
-              <div className="text-xs sm:text-sm">
-                <strong className="block font-bold">
-                  Menunggu Host memulai pertandingan...
-                </strong>
-                <span
-                  className={`font-medium ${
-                    isDark ? "text-zinc-300" : "text-slate-600"
-                  }`}
-                >
-                  {players.length < minPlayers
-                    ? `Saat ini baru bergabung ${players.length} dari minimal ${minPlayers} pemain.`
-                    : "Jumlah pemain sudah memenuhi syarat. Soal akan segera tampil serentak."}
-                </span>
+                key={idx}
+                className="w-12 h-14 sm:w-14 sm:h-16 rounded-2xl flex items-center justify-center font-display font-bold text-2xl sm:text-3xl transition-transform duration-150 hover:scale-110 hover:-rotate-3 active:scale-95 cursor-default select-none"
+                style={{
+                  backgroundColor: skin.limeInput,
+                  color: skin.navy,
+                  border: "2.5px solid #0E1236",
+                  boxShadow: "0 4px 0 #0E1236",
+                }}
+              >
+                {ch}
+              </span>
+            ))}
+          </div>
+
+          {/* Copy Button (High Contrast 3D Tactile) */}
+          <button
+            type="button"
+            onClick={handleCopyCode}
+            className="w-full py-3.5 px-5 rounded-full font-display font-bold text-sm flex items-center justify-center gap-2 transition-all duration-150 cursor-pointer select-none hover:-translate-y-0.5 active:translate-y-1 active:shadow-none"
+            style={{
+              backgroundColor: skin.navy,
+              color: "#FFFFFF",
+              border: "2.5px solid #0E1236",
+              boxShadow: "0 5px 0 #06081B",
+            }}
+          >
+            {copied ? (
+              <>
+                <IconCheck size={18} />
+                <span>Kode Berhasil Disalin!</span>
+              </>
+            ) : (
+              <>
+                <IconCopy size={18} />
+                <span>Salin Kode Akses</span>
+              </>
+            )}
+          </button>
+
+          <p className="text-center text-xs font-sans font-bold opacity-80 text-[#0E1236]">
+            Bagikan kode 5 karakter di atas agar teman-temanmu dapat bergabung!
+          </p>
+
+          {/* Fallback Notice Card if Gemini quota hit */}
+          {room.usedFallback && (
+            <div className="p-4 rounded-3xl bg-white text-[#0E1236] border-3 border-[#0E1236] shadow-[0_4px_0_#0E1236] flex items-start gap-3">
+              <div className="p-2 rounded-xl bg-[#FF7A66] text-white border-2 border-[#0E1236]">
+                <IconAlert size={18} />
+              </div>
+              <div className="flex-1 text-xs">
+                <p className="font-display font-bold text-xs uppercase tracking-wider">
+                  Soal Cadangan: {room.topic || "JavaScript"}
+                </p>
+                <p className="mt-0.5 font-sans font-bold opacity-80 leading-relaxed">
+                  Layanan AI sedang sibuk atau mencapai kuota. Permainan otomatis
+                  memakai paket soal cadangan lokal berkualitas tinggi.
+                </p>
               </div>
             </div>
           )}
-        </div>
-      </section>
+
+          {/* Quiz Metadata Pills (Solid Borders) */}
+          <div className="grid grid-cols-2 gap-2.5 pt-1">
+            <div
+              className="p-3.5 rounded-2xl flex flex-col border-2 border-[#0E1236]"
+              style={{
+                backgroundColor: skin.limeInput,
+                boxShadow: "0 2.5px 0 #0E1236",
+              }}
+            >
+              <span className="text-[10px] font-display font-bold uppercase opacity-75">
+                Topik Kuis
+              </span>
+              <span className="font-display font-bold text-sm truncate mt-0.5">
+                {room.topic || "Kuis Bebas"}
+              </span>
+            </div>
+
+            <div
+              className="p-3.5 rounded-2xl flex flex-col border-2 border-[#0E1236]"
+              style={{
+                backgroundColor: skin.limeInput,
+                boxShadow: "0 2.5px 0 #0E1236",
+              }}
+            >
+              <span className="text-[10px] font-display font-bold uppercase opacity-75">
+                Kesulitan
+              </span>
+              <span className="font-display font-bold text-sm mt-0.5">
+                {room.difficulty || "Sedang"}
+              </span>
+            </div>
+
+            <div
+              className="p-3.5 rounded-2xl flex flex-col border-2 border-[#0E1236]"
+              style={{
+                backgroundColor: skin.limeInput,
+                boxShadow: "0 2.5px 0 #0E1236",
+              }}
+            >
+              <span className="text-[10px] font-display font-bold uppercase opacity-75">
+                Jumlah Soal
+              </span>
+              <span className="font-display font-bold text-sm mt-0.5">
+                {room.questionCount || 5} Soal
+              </span>
+            </div>
+
+            <div
+              className="p-3.5 rounded-2xl flex flex-col border-2 border-[#0E1236]"
+              style={{
+                backgroundColor: skin.limeInput,
+                boxShadow: "0 2.5px 0 #0E1236",
+              }}
+            >
+              <span className="text-[10px] font-display font-bold uppercase opacity-75">
+                Durasi Jawab
+              </span>
+              <span className="font-display font-bold text-sm mt-0.5">
+                20 Detik / Soal
+              </span>
+            </div>
+          </div>
+
+          {/* Exit Button */}
+          <button
+            type="button"
+            onClick={handleLeaveRoom}
+            className="w-full py-3 px-4 rounded-full font-display font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer hover:bg-[#0E1236]/10"
+            style={{
+              border: "2px solid #0E1236",
+              color: skin.navy,
+              boxShadow: "0 2px 0 #0E1236",
+            }}
+          >
+            <IconLogout size={16} />
+            <span>Keluar dari Room</span>
+          </button>
+        </section>
+
+        {/* ======================================================== */}
+        {/* KOLOM KANAN: Lobby Roster Card (Prominent High Contrast)  */}
+        {/* ======================================================== */}
+        <section
+          aria-labelledby="lobby-roster-title"
+          className="lg:col-span-7 rounded-[40px] p-6 sm:p-9 flex flex-col justify-between relative overflow-hidden transition-all duration-300"
+          style={{
+            backgroundColor: skin.cardBg,
+            borderColor: skin.cardBorder,
+            borderWidth: "3px",
+            boxShadow: skin.cardShadow,
+            color: skin.cardText,
+            minHeight: "580px",
+          }}
+        >
+          {/* Decorative Corner circles */}
+          <div
+            aria-hidden="true"
+            className="absolute -top-8 -right-8 w-24 h-24 rounded-full pointer-events-none opacity-80 border-2 border-[#0E1236]/30"
+            style={{ backgroundColor: skin.lime }}
+          />
+          <div
+            aria-hidden="true"
+            className="absolute -top-6 right-20 w-12 h-12 rounded-full pointer-events-none opacity-70 border-2 border-[#0E1236]/30"
+            style={{ backgroundColor: skin.coral }}
+          />
+
+          <div className="relative z-10 flex flex-col gap-6">
+            {/* Header: Title + Player Count Pill */}
+            <div
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 pb-4"
+              style={{ borderColor: skin.cardBorder }}
+            >
+              <div>
+                <h2
+                  id="lobby-roster-title"
+                  className="text-2xl font-display font-bold tracking-tight"
+                >
+                  Lobby Pemain
+                </h2>
+                <p className="text-xs font-sans font-bold opacity-80 mt-0.5">
+                  Dibutuhkan minimal {minPlayers} pemain (maks. {maxPlayers} pemain)
+                  untuk memulai kuis.
+                </p>
+              </div>
+
+              <div
+                className="self-start sm:self-auto px-4 py-1.5 rounded-full font-display font-bold text-xs flex items-center gap-1.5 border-2 border-[#0E1236] shadow-[0_3px_0_#0E1236]"
+                style={{
+                  backgroundColor:
+                    players.length >= minPlayers ? skin.lime : skin.periwinkle,
+                  color: skin.navy,
+                }}
+              >
+                <IconUsers size={14} />
+                <span>
+                  {players.length} / {maxPlayers}
+                </span>
+              </div>
+            </div>
+
+            {/* Error Message if any */}
+            {error && (
+              <div className="p-3.5 rounded-2xl bg-[#FF7A66] text-white font-display font-bold text-xs flex items-center gap-2 border-2 border-[#0E1236] shadow-[0_3px_0_#0E1236]">
+                <IconAlert size={16} />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* Readiness Bar (High Contrast) */}
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between text-xs font-display font-bold">
+                <span className="opacity-80">Kesiapan Arena</span>
+                <span
+                  style={{
+                    color: players.length >= minPlayers ? (isDark ? skin.lime : "#2E7D32") : skin.coral,
+                  }}
+                >
+                  {players.length >= minPlayers
+                    ? "✓ Arena Siap Tempur!"
+                    : `Kurang ${neededCount} pemain lagi`}
+                </span>
+              </div>
+              <div
+                className="w-full h-4 rounded-full overflow-hidden border-2 border-[#0E1236]"
+                style={{
+                  backgroundColor: isDark ? "#0A0D28" : "#E8DFC5",
+                }}
+              >
+                <div
+                  className="h-full rounded-full transition-all duration-500 ease-out"
+                  style={{
+                    width: `${readinessPercent}%`,
+                    backgroundColor:
+                      players.length >= minPlayers ? skin.lime : skin.coral,
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Player Cards Grid (Crisp 3D Cards) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {players.map((item, index) => {
+                const isYou = item.id === player?.id;
+                const isItemHost = item.isHost || item.id === room.hostId;
+                const avatarColor = colorFor(item.id || item.name || index);
+
+                return (
+                  <div
+                    key={item.id || index}
+                    className="p-3.5 rounded-3xl flex items-center gap-3 transition-transform hover:scale-[1.02]"
+                    style={{
+                      backgroundColor: isDark
+                        ? isYou
+                          ? "#1F255A"
+                          : "#141842"
+                        : isYou
+                        ? "#F3FBD4"
+                        : "#FFFFFF",
+                      border: `2.5px solid ${skin.cardBorder}`,
+                      boxShadow: isYou
+                        ? `0 4px 0 ${skin.cardBorder}`
+                        : `0 3px 0 ${skin.cardBorder}`,
+                    }}
+                  >
+                    <BlobAvatar
+                      name={item.name}
+                      color={avatarColor}
+                      size={44}
+                      isHost={isItemHost}
+                      isYou={isYou}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-display font-bold text-sm truncate">
+                          {item.name}
+                        </span>
+                        {isItemHost && (
+                          <span
+                            className="px-2 py-0.5 rounded-full text-[10px] font-display font-bold flex items-center gap-1 border border-[#0E1236]"
+                            style={{
+                              backgroundColor: skin.lime,
+                              color: skin.navy,
+                            }}
+                          >
+                            <IconCrown size={10} />
+                            HOST
+                          </span>
+                        )}
+                        {isYou && (
+                          <span
+                            className="px-2 py-0.5 rounded-full text-[10px] font-display font-bold border border-[#0E1236]"
+                            style={{
+                              backgroundColor: skin.periwinkle,
+                              color: skin.navy,
+                            }}
+                          >
+                            KAMU
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] font-sans font-semibold opacity-70">
+                        Pemain #{index + 1} • Terhubung
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Waiting Empty Slots */}
+              {emptyMinSlots.map((slotIdx) => (
+                <div
+                  key={`empty-${slotIdx}`}
+                  className="p-3.5 rounded-3xl flex items-center gap-3 border-2 border-dashed opacity-80"
+                  style={{ borderColor: skin.cardBorder }}
+                >
+                  <BlobAvatar
+                    name="?"
+                    color="#A0AEC0"
+                    size={44}
+                    sleepy={true}
+                  />
+                  <div className="flex flex-col">
+                    <span className="font-display font-bold text-xs opacity-90">
+                      Menunggu pemain...
+                    </span>
+                    <span className="text-[11px] font-sans font-semibold opacity-70">
+                      Slot minimal {minPlayers} pemain
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Action / CTA Bottom Bar */}
+          <div
+            className="mt-8 pt-4 border-t-2"
+            style={{ borderColor: skin.cardBorder }}
+          >
+            {isHost ? (
+              canStart ? (
+                <button
+                  type="button"
+                  onClick={handleStartGame}
+                  className="animate-pulse-glow w-full py-4 px-6 rounded-full font-display font-bold text-base flex items-center justify-center gap-2 transition-all duration-150 cursor-pointer select-none hover:-translate-y-0.5 active:translate-y-1 active:shadow-none"
+                  style={{
+                    backgroundColor: skin.lime,
+                    color: skin.navy,
+                    border: "3px solid #0E1236",
+                    boxShadow: "0 6px 0 #0E1236",
+                  }}
+                >
+                  <IconPlay size={20} />
+                  <span>Mulai Pertandingan Sekarang!</span>
+                </button>
+              ) : (
+                <div
+                  className="w-full py-3.5 px-6 rounded-full font-display font-bold text-sm text-center border-2 opacity-75 cursor-not-allowed"
+                  style={{
+                    backgroundColor: isDark ? "#0A0D28" : "#EAE0C4",
+                    borderColor: skin.cardBorder,
+                  }}
+                >
+                  Menunggu minimal {minPlayers} pemain untuk memulai (kurang{" "}
+                  {neededCount} pemain lagi)
+                </div>
+              )
+            ) : (
+              <div
+                className="w-full py-3.5 px-6 rounded-full font-display font-bold text-xs text-center flex items-center justify-center gap-2 border-2"
+                style={{
+                  backgroundColor: isDark ? "#0A0D28" : "#EAE0C4",
+                  borderColor: skin.cardBorder,
+                }}
+              >
+                <div className="w-2.5 h-2.5 rounded-full animate-ping bg-[#8B9CFF]" />
+                <span>
+                  Menunggu Host memulai pertandingan... ({players.length} /{" "}
+                  {minPlayers} pemain siap)
+                </span>
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
     </main>
   );
 }
