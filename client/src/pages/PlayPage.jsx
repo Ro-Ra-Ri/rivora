@@ -9,7 +9,10 @@ import {
 import Mascot from "../components/Mascot";
 import { useTheme } from "../context/ThemeContext";
 import { emitSubmitAnswer } from "../socket";
-import { answerLocked } from "../store/gameSlice";
+import {
+  answerLocked,
+  answerSubmissionFailed,
+} from "../store/gameSlice";
 import { getSkin } from "../theme/skin";
 import {
   playAnswerLock,
@@ -53,7 +56,14 @@ export default function PlayPage() {
   const skin = getSkin(isDark);
   const dispatch = useDispatch();
 
-  const { currentQuestion, room, player, selectedChoice, isLocked, config } =
+  const {
+    currentQuestion,
+    room,
+    player,
+    selectedChoice,
+    answerSubmitted,
+    config,
+  } =
     useSelector((state) => state.game);
 
   const durationMs =
@@ -97,19 +107,18 @@ export default function PlayPage() {
   }, [durationMs, currentQuestion?.startedAt, currentQuestion?.index]);
 
   const handleChoose = (choiceIndex) => {
-    if (isLocked || remainingMs <= 0 || !room?.code || !player?.id) {
+    if (answerSubmitted || remainingMs <= 0 || !room?.code || !player?.id) {
       return;
     }
 
     playAnswerLock();
-    dispatch(answerLocked({ choice: choiceIndex }));
+    dispatch(answerLocked(choiceIndex));
 
     emitSubmitAnswer({
       code: room.code,
-      playerId: player.id,
-      questionIndex: currentQuestion?.index ?? 0,
       choice: choiceIndex,
-      timeRemainingMs: remainingMs,
+    }).then((response) => {
+      if (!response) dispatch(answerSubmissionFailed());
     });
   };
 
@@ -128,7 +137,7 @@ export default function PlayPage() {
 
   // Mascot dynamic mood
   let mascotMood = "idle";
-  if (isLocked) {
+  if (answerSubmitted) {
     mascotMood = "happy";
   } else if (secondsLeft <= 5) {
     mascotMood = "shock";
@@ -167,7 +176,7 @@ export default function PlayPage() {
               </span>
             </div>
             <p className="text-xs font-display font-bold opacity-70 mt-1">
-              {isLocked
+              {answerSubmitted
                 ? "✓ Jawabanmu sudah terkunci! Menunggu ronde usai..."
                 : "Pilih 1 jawaban paling tepat sebelum waktu habis!"}
             </p>
@@ -276,7 +285,7 @@ export default function PlayPage() {
             <button
               key={index}
               type="button"
-              disabled={isLocked || remainingMs <= 0}
+              disabled={answerSubmitted || remainingMs <= 0}
               onClick={() => handleChoose(index)}
               className="group rounded-3xl p-5 sm:p-6 flex items-center gap-4 text-left font-display font-bold transition-all duration-150 cursor-pointer disabled:cursor-not-allowed select-none hover:-translate-y-0.5 active:translate-y-1 active:shadow-none"
               style={{
@@ -289,7 +298,7 @@ export default function PlayPage() {
                 transform: isSelected
                   ? "translateY(4px)"
                   : "none",
-                opacity: isLocked && !isSelected ? 0.45 : 1,
+                opacity: answerSubmitted && !isSelected ? 0.45 : 1,
               }}
             >
               {/* Option Letter Badge (Chunky 3D square) */}
@@ -330,7 +339,7 @@ export default function PlayPage() {
 
       {/* Bottom Status Feedback */}
       <div className="text-center font-sans font-bold text-xs">
-        {isLocked ? (
+        {answerSubmitted ? (
           <span className="inline-block px-4 py-2 rounded-full bg-[#0E1236] text-[#C5F23A] border-2 border-[#0E1236] shadow-[0_3px_0_#0E1236]">
             ✓ Pilihanmu sudah tersimpan! Jawaban benar akan dibuka saat timer habis.
           </span>

@@ -100,6 +100,25 @@ function startGame({ code, playerId }) {
   return { room: toPublicRoom(room) };
 }
 
+// Host may stop an active match. Scores from completed questions are kept;
+// an unfinished question does not award points.
+function endGame({ code, playerId }) {
+  const room = getRoomOrThrow(code);
+
+  if (room.hostId !== playerId) {
+    throw new AppError("Hanya host yang bisa mengakhiri pertandingan", 403, "NOT_HOST");
+  }
+
+  if (room.status !== "playing") {
+    throw new AppError("Tidak ada pertandingan yang sedang berjalan", 409, "GAME_NOT_PLAYING");
+  }
+
+  room.status = "finished";
+  room.questionActive = false;
+
+  return { ...buildResult(room), endedEarly: true };
+}
+
 // Memulai soal berikutnya. Dipanggil Dev3 untuk soal pertama dan setiap selesai reveal.
 // Hasilnya salah satu dari:
 //   { done: false, question }  -> kirim soal ke semua pemain, lalu nyalakan timer
@@ -224,6 +243,7 @@ function getLeaderboard(code) {
 
 module.exports = {
   startGame,
+  endGame,
   nextQuestion,
   submitAnswer,
   getAnswerProgress,

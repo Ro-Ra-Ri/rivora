@@ -40,6 +40,7 @@ function toPublicRoom(room) {
     requestedQuestionCount: room.requestedCount,
     usedFallback: room.usedFallback,
     fallbackTopic: room.fallbackTopic,
+    fallbackShortage: room.fallbackShortage,
     minPlayers: config.minPlayers,
     maxPlayers: config.maxPlayers,
     players: room.players.map((player) => toPublicPlayer(room, player)),
@@ -69,6 +70,7 @@ function createRoom({
   requestedCount,
   usedFallback = false,
   fallbackTopic = null,
+  fallbackShortage = false,
 }) {
   const name = validatePlayerName(hostName);
 
@@ -88,6 +90,7 @@ function createRoom({
     requestedCount: requestedCount || questions.length,
     usedFallback,
     fallbackTopic,
+    fallbackShortage,
     players: [host], // urutan = urutan masuk, jadi indeks 0 = pemain terlama
     currentQuestionIndex: -1,
     questionStartedAt: null,

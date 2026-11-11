@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import BlobAvatar from "../components/BlobAvatar";
 import {
+  IconAlert,
   IconCrown,
   IconHome,
   IconUsers,
@@ -22,7 +23,7 @@ export default function ResultPage() {
   const { room, player, finalResult } = useSelector((state) => state.game);
 
   useEffect(() => {
-    if (finalResult) {
+    if (finalResult && !finalResult.endedEarly) {
       playVictoryFanfare();
     }
   }, [finalResult]);
@@ -33,7 +34,8 @@ export default function ResultPage() {
 
   const leaderboard = finalResult.leaderboard || [];
   const winners = finalResult.winners || [];
-  const winner = winners[0] || leaderboard[0];
+  const endedEarly = Boolean(finalResult.endedEarly);
+  const winner = winners[0] || (!endedEarly ? leaderboard[0] : null);
   const topic = finalResult.topic || room?.topic || "Kuis";
 
   const selfStanding = leaderboard.find(
@@ -89,19 +91,21 @@ export default function ResultPage() {
                   color: skin.lime,
                 }}
               >
-                <IconCrown size={14} />
-                <span>JUARA 1 ARENA</span>
+                {endedEarly ? <IconAlert size={14} /> : <IconCrown size={14} />}
+                <span>{endedEarly ? "PERTANDINGAN DIHENTIKAN" : "JUARA 1 ARENA"}</span>
               </div>
 
               <h1
                 id="winner-title"
                 className="text-3xl sm:text-4xl font-display font-bold mt-2 text-[#0E1236]"
               >
-                {winner ? winner.name : "Pertandingan Usai!"}
+                {winner?.name || (endedEarly ? "Pertandingan Diakhiri" : "Pertandingan Usai!")}
               </h1>
 
               <p className="text-xs sm:text-sm font-sans font-bold opacity-80 mt-1 text-[#0E1236]">
-                Selamat! Berhasil menaklukkan kuis "{topic}" dengan skor gemilang!
+                {endedEarly
+                  ? `Host mengakhiri kuis "${topic}" lebih awal. Skor hanya mencakup ronde yang sudah selesai.`
+                  : `Selamat! Berhasil menaklukkan kuis "${topic}" dengan skor gemilang!`}
               </p>
             </div>
 
@@ -112,7 +116,7 @@ export default function ResultPage() {
             >
               <div>
                 <span className="text-[10px] font-display font-bold uppercase opacity-75">
-                  Total Skor
+                  {endedEarly ? "Skor Tertinggi" : "Total Skor"}
                 </span>
                 <p className="text-2xl sm:text-3xl font-display font-bold mt-0.5">
                   {winner?.totalScore ?? winner?.score ?? 0}
@@ -204,10 +208,12 @@ export default function ResultPage() {
                   id="final-board-title"
                   className="text-2xl font-display font-bold tracking-tight"
                 >
-                  Klasemen Akhir Pertandingan
+                  {endedEarly ? "Klasemen Saat Dihentikan" : "Klasemen Akhir Pertandingan"}
                 </h2>
                 <p className="text-xs font-sans font-bold opacity-80 mt-0.5">
-                  Hasil akhir performa seluruh pemain dalam arena.
+                  {endedEarly
+                    ? "Skor tiap pemain saat host mengakhiri pertandingan."
+                    : "Hasil akhir performa seluruh pemain dalam arena."}
                 </p>
               </div>
 

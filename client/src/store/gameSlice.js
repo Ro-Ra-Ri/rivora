@@ -129,21 +129,29 @@ export const createRoomAsync = createAsyncThunk(
         });
       }
 
-      if (data?.room?.code && data?.player?.id) {
-        emitHostJoinRoom({ code: data.room.code, playerId: data.player.id });
+      if (!data?.room?.code || !data?.player?.id) {
+        return rejectWithValue({
+          type: "error",
+          code: "INVALID_SERVER_RESPONSE",
+          message: "Server tidak mengembalikan data room yang lengkap.",
+        });
       }
 
+      const joined = await emitHostJoinRoom({
+        code: data.room.code,
+        playerId: data.player.id,
+      });
+
       return {
-        room: data.room,
-        player: data.player,
+        room: joined.room,
+        player: joined.player,
         source: data.source || (data.room?.usedFallback ? "fallback" : "ai"),
       };
-    } catch {
+    } catch (error) {
       return rejectWithValue({
         type: "error",
-        code: "NETWORK_ERROR",
-        message:
-          "Tidak dapat terhubung ke server. Pastikan server backend sedang berjalan.",
+        code: error?.code || "NETWORK_ERROR",
+        message: error?.message || "Tidak dapat terhubung ke server.",
       });
     }
   }
@@ -219,36 +227,19 @@ export const joinRoomCheckAsync = createAsyncThunk(
         });
       }
 
-      const handledBySocket = emitJoinRoom({
+      const joined = await emitJoinRoom({
         code: room.code,
         name: cleanName,
       });
 
-      const fallbackPlayer = {
-        id: `local-${Date.now()}`,
-        name: cleanName,
-        score: 0,
-        connected: true,
-        isHost: false,
-      };
-
-      const updatedRoom = handledBySocket
-        ? room
-        : {
-            ...room,
-            players: [...room.players, fallbackPlayer],
-          };
-
       return {
-        handledBySocket,
-        room: updatedRoom,
-        player: fallbackPlayer,
+        room: joined.room,
+        player: joined.player,
       };
-    } catch {
+    } catch (error) {
       return rejectWithValue({
-        code: "NETWORK_ERROR",
-        message:
-          "Tidak dapat menghubungi server. Pastikan server backend sedang berjalan.",
+        code: error?.code || "NETWORK_ERROR",
+        message: error?.message || "Tidak dapat menghubungi server.",
       });
     }
   }
@@ -341,20 +332,15 @@ const gameSlice = createSlice({
     },
     answerLocked(state, action) {
       if (state.answerSubmitted) return;
-      state.selectedChoice = action.payload;
+      state.selectedChoice =
+        typeof action.payload === "number"
+          ? action.payload
+          : action.payload?.choice ?? null;
       state.answerSubmitted = true;
-
-      if (state.answerProgress) {
-        const nextCount = Math.min(
-          state.answerProgress.answeredCount + 1,
-          state.answerProgress.totalPlayers
-        );
-        state.answerProgress = {
-          ...state.answerProgress,
-          answeredCount: nextCount,
-          allAnswered: nextCount >= state.answerProgress.totalPlayers,
-        };
-      }
+    },
+    answerSubmissionFailed(state) {
+      state.selectedChoice = null;
+      state.answerSubmitted = false;
     },
     answerProgressUpdated(state, action) {
       state.answerProgress = action.payload;
@@ -473,6 +459,7 @@ export const {
   roomUpdated,
   questionStarted,
   answerLocked,
+  answerSubmissionFailed,
   answerProgressUpdated,
   questionRevealed,
   gameFinished,
