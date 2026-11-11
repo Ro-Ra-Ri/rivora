@@ -1,107 +1,180 @@
-// ============================================================================
-// FILE INI MILIK DEV3.
-// Dev2 hanya membuat kerangkanya supaya aplikasi React & Redux bisa berjalan.
-// Dev3 mengisi pemasangan socket.io-client, emitter, dan listener di sini.
-// ============================================================================
-//
-// Panduan singkat untuk Dev3:
-// 1. Install socket.io-client di folder client: `npm install socket.io-client`
-// 2. Gunakan alamat server dari `SERVER_URL` di bawah ini.
-// 3. Saat event dari server datang, panggil `store.dispatch(...)` memakai
-//    action dari `../store/gameSlice`:
-//    - `setSocketConnected(true / false)` -> saat connect / disconnect
-//    - `sessionJoined({ room, player })`  -> saat pemain berhasil join room
-//    - `roomUpdated(room)`                -> saat daftar pemain / host berubah
-//    - `questionStarted(question)`        -> saat soal baru dimulai (20 detik)
-//    - `answerProgressUpdated(progress)`  -> saat ada pemain yang menjawab
-//    - `questionRevealed(revealData)`     -> saat waktu habis / semua menjawab (8 detik)
-//    - `gameFinished(resultData)`         -> saat seluruh soal selesai
-//    - `setError({ message, code })`      -> saat server mengirim error
-// ============================================================================
+import { io } from "socket.io-client";
 
 export const SERVER_URL = (
   import.meta.env.VITE_SERVER_URL || "http://localhost:3000"
 ).replace(/\/+$/, "");
 
-let socketInstance = null;
+const CONNECTION_TIMEOUT_MS = 12000;
+const ACK_TIMEOUT_MS = 12000;
 
-/**
- * Dipanggil sekali dari App.jsx saat aplikasi menyala.
- * @param {import("@reduxjs/toolkit").EnhancedStore} store
- */
-export function initSocketListeners(store) {
-  // Dev3: inisialisasi koneksi socket.io-client dan pasang semua socket.on(...) di sini.
-  // Contoh kerangka untuk Dev3:
-  //
-  // if (socketInstance) return socketInstance;
-  // socketInstance = io(SERVER_URL, { autoConnect: true });
-  // socketInstance.on("connect", () => store.dispatch(setSocketConnected(true)));
-  // socketInstance.on("disconnect", () => store.dispatch(setSocketConnected(false)));
-  void store;
+let socketInstance = null;
+let appStore = null;
+
+function dispatch(type, payload) {
+  appStore?.dispatch({ type, payload });
+}
+
+function socketError(error) {
+  const message = error?.message || "Koneksi ke server terputus.";
+  dispatch("game/setError", { message, code: error?.code || "SOCKET_ERROR" });
+}
+
+function getSocket() {
+  if (!socketInstance) {
+    throw new Error("Koneksi realtime belum siap. Muat ulang halaman.");
+  }
   return socketInstance;
 }
 
-/**
- * Dipanggil setelah Host berhasil membuat room lewat REST POST /api/rooms
- * supaya socket milik Host ditautkan ke playerId dan room code di server
- * (lihat playerService.getPlayer di server).
- */
-export function emitHostJoinRoom({ code, playerId }) {
-  // Dev3: kirim event socket untuk menautkan socket host ke room `code` & `playerId`.
-  void code;
-  void playerId;
+function waitForConnection(socket) {
+  if (socket.connected) return Promise.resolve();
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      socket.off("connect", onConnect);
+      socket.off("connect_error", onConnectError);
+      error ? reject(error) : resolve();
+    };
+    const onConnect = () => finish();
+    const onConnectError = (error) => {
+      // Socket.IO akan mencoba tersambung lagi. Biarkan sampai batas waktu.
+      if (socket.active === false) finish(error);
+    };
+    const timeout = setTimeout(
+      () => finish(new Error("Tidak dapat terhubung ke server realtime.")),
+      CONNECTION_TIMEOUT_MS
+    );
+
+    socket.once("connect", onConnect);
+    socket.on("connect_error", onConnectError);
+    if (!socket.active) socket.connect();
+  });
 }
 
-/**
- * Dipanggil saat pemain biasa menekan "Gabung Room" setelah cek room berhasil.
- * Mengembalikan true jika ditangani oleh Socket.io, atau false jika socket belum dipasang.
- */
-export function emitJoinRoom({ code, name }) {
-  // Dev3: kirim event join room ke server lewat socket (roomService.joinRoom di server),
-  // lalu ubah return menjadi `true` setelah diimplementasikan.
-  void code;
-  void name;
-  return false;
+async function emitWithAck(event, payload = {}) {
+  const socket = getSocket();
+  await waitForConnection(socket);
+
+  return new Promise((resolve, reject) => {
+    socket.timeout(ACK_TIMEOUT_MS).emit(event, payload, (timeoutError, response) => {
+      if (timeoutError) {
+        reject(new Error("Server tidak merespons. Coba lagi."));
+        return;
+      }
+
+      if (!response?.ok) {
+        const error = response?.error || {};
+        const failure = new Error(error.message || "Permintaan ke server gagal.");
+        failure.code = error.code || "SOCKET_REQUEST_FAILED";
+        reject(failure);
+        return;
+      }
+
+      resolve(response);
+    });
+  });
 }
 
-/**
- * Dipanggil saat pemain menekan tombol "Keluar Room".
- */
-export function emitLeaveRoom({ code, playerId }) {
-  // Dev3: kirim event leave room ke server (roomService.leaveRoom di server).
-  void code;
-  void playerId;
+/** Pasang satu koneksi Socket.IO dan hubungkan event server ke Redux. */
+export function initSocketListeners(store) {
+  appStore = store;
+  if (socketInstance) return socketInstance;
+
+  socketInstance = io(SERVER_URL, {
+    autoConnect: true,
+    transports: ["websocket", "polling"],
+  });
+
+  socketInstance.on("connect", () => {
+    dispatch("game/setSocketConnected", true);
+  });
+  socketInstance.on("disconnect", (reason) => {
+    dispatch("game/setSocketConnected", false);
+    if (reason !== "io client disconnect") {
+      socketError(new Error("Koneksi realtime terputus. Periksa server dan jaringan."));
+    }
+  });
+  socketInstance.on("connect_error", (error) => {
+    dispatch("game/setSocketConnected", false);
+    socketError(error);
+  });
+
+  socketInstance.on("room:state", (state) => {
+    dispatch("game/sessionJoined", state);
+  });
+  socketInstance.on("room:updated", ({ room } = {}) => {
+    if (room) dispatch("game/roomUpdated", room);
+  });
+  socketInstance.on("game:question", (question) => {
+    dispatch("game/questionStarted", question);
+  });
+  socketInstance.on("game:answer-progress", (progress) => {
+    dispatch("game/answerProgressUpdated", progress);
+  });
+  socketInstance.on("game:reveal", (reveal) => {
+    dispatch("game/questionRevealed", reveal);
+  });
+  socketInstance.on("game:result", (result) => {
+    dispatch("game/gameFinished", result);
+  });
+  socketInstance.on("server:error", (error) => socketError(error));
+
+  return socketInstance;
 }
 
-/**
- * Dipanggil saat Host menekan tombol "Mulai Pertandingan" di Lobby.
- * Mengembalikan true jika ditangani oleh Socket.io, atau false jika socket belum dipasang.
- */
-export function emitStartGame({ code, playerId }) {
-  // Dev3: kirim event start game ke server (gameService.startGame di server),
-  // lalu ubah return menjadi `true` setelah diimplementasikan.
-  void code;
-  void playerId;
-  return false;
+export async function emitHostJoinRoom({ code, playerId }) {
+  try {
+    return await emitWithAck("room:connect", { code, playerId });
+  } catch (error) {
+    socketError(error);
+    throw error;
+  }
 }
 
-/**
- * Dipanggil saat pemain memilih salah satu dari 4 jawaban (indeks 0..3).
- * Mengembalikan true jika ditangani oleh Socket.io, atau false jika socket belum dipasang.
- */
-export function emitSubmitAnswer({ code, playerId, choice }) {
-  // Dev3: kirim event submit answer ke server (gameService.submitAnswer di server),
-  // lalu ubah return menjadi `true` setelah diimplementasikan.
-  void code;
-  void playerId;
-  void choice;
-  return false;
+export async function emitJoinRoom({ code, name }) {
+  try {
+    return await emitWithAck("room:join", { code, name });
+  } catch (error) {
+    socketError(error);
+    throw error;
+  }
+}
+
+export function emitLeaveRoom() {
+  return emitWithAck("room:leave").catch((error) => {
+    socketError(error);
+    return null;
+  });
+}
+
+export function emitStartGame() {
+  return emitWithAck("game:start").catch((error) => {
+    socketError(error);
+    return null;
+  });
+}
+
+export function emitStopGame() {
+  return emitWithAck("game:stop").catch((error) => {
+    socketError(error);
+    return null;
+  });
+}
+
+export function emitSubmitAnswer({ choice }) {
+  return emitWithAck("answer:submit", { choice }).catch((error) => {
+    socketError(error);
+    return null;
+  });
 }
 
 export function disconnectSocket() {
-  if (socketInstance && typeof socketInstance.disconnect === "function") {
+  if (socketInstance) {
     socketInstance.disconnect();
+    socketInstance = null;
   }
-  socketInstance = null;
 }
-

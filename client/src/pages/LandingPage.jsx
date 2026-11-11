@@ -439,7 +439,7 @@ export default function LandingPage() {
             {error && !topicRejection && (
               <div className="animate-pop-in mb-5 p-4 rounded-3xl bg-[#FF7A66] text-white border-3 border-[#0E1236] shadow-[0_4px_0_#0E1236] font-display font-bold text-xs flex items-center gap-2">
                 <IconAlert size={18} />
-                <span>{error}</span>
+                <span>{error.message || "Terjadi kesalahan. Coba lagi."}</span>
               </div>
             )}
 
@@ -580,7 +580,7 @@ export default function LandingPage() {
                       Jumlah Soal
                     </label>
                     <div className="flex gap-2">
-                      {[3, 5, 10].map((num) => {
+                      {(config.questionCountOptions || [5, 10, 15]).map((num) => {
                         const isSelected = questionCount === num;
                         return (
                           <button
