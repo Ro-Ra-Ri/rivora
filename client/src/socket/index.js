@@ -1,7 +1,7 @@
 import { io } from "socket.io-client";
 
 export const SERVER_URL = (
-  import.meta.env.VITE_SERVER_URL || "http://localhost:3000"
+  import.meta.env.VITE_SERVER_URL || "https://rivora-api.chazha.web.id/"
 ).replace(/\/+$/, "");
 
 const CONNECTION_TIMEOUT_MS = 12000;
