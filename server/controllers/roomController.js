@@ -88,3 +88,4 @@ function getConfigHandler(req, res) {
 }
 
 module.exports = { createRoomHandler, getRoomHandler, getConfigHandler };
+

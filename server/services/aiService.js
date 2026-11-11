@@ -6,13 +6,12 @@ const { extractJson } = require("../utils/extractJson");
 const { validateQuestions } = require("../utils/questionValidator");
 const { getFallbackQuestions } = require("./fallbackService");
 const { buildSystemPrompt, buildUserPrompt } = require("./aiPrompt");
-const { callGemini, callGrok } = require("./aiProviders");
+const { callGemini } = require("./aiProviders");
 
 const DEFAULT_SUGGESTIONS = ["Sejarah Indonesia", "JavaScript dasar", "Tata surya"];
 
-// Urutan penyedia: Gemini dulu, lalu Grok. Penyedia tanpa API key dilewati.
-// Urutan penyedia: Gemini utama, Gemini cadangan, lalu Grok.
-// Penyedia tanpa API key (atau tanpa model cadangan) dilewati.
+// Urutan model: Gemini utama, lalu Gemini cadangan.
+// Model cadangan dilewati jika API key tidak tersedia atau modelnya sama.
 const defaultProviders = [
   {
     name: "gemini",
@@ -25,11 +24,6 @@ const defaultProviders = [
       Boolean(config.geminiApiKey && config.geminiFallbackModel) &&
       config.geminiFallbackModel !== config.geminiModel,
     call: (prompts) => callGemini(prompts, config.geminiFallbackModel),
-  },
-  {
-    name: "grok",
-    isEnabled: () => Boolean(config.grokApiKey),
-    call: callGrok,
   },
 ];
 

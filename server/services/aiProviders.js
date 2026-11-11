@@ -79,39 +79,4 @@ async function callGemini({ systemPrompt, userPrompt }, model = config.geminiMod
   });
 }
 
-// ---------- Grok (xAI) ----------
-
-async function callGrok({ systemPrompt, userPrompt }) {
-  return withRetry(async () => {
-    const response = await fetch("https://api.x.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${config.grokApiKey}`,
-      },
-      body: JSON.stringify({
-        model: config.grokModel,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-      }),
-      signal: AbortSignal.timeout(AI_TIMEOUT_MS),
-    });
-
-    if (!response.ok) {
-      throw httpError(response.status, await readErrorDetail(response));
-    }
-
-    const data = await response.json();
-    const text = data?.choices?.[0]?.message?.content;
-
-    if (!text) {
-      throw new Error("Grok tidak mengembalikan teks");
-    }
-
-    return text;
-  });
-}
-
-module.exports = { callGemini, callGrok, withRetry };
+module.exports = { callGemini, withRetry };

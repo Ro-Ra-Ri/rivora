@@ -3,7 +3,6 @@ const config = require("../config");
 
 // Matikan API key supaya tes tidak pernah memanggil AI sungguhan.
 config.geminiApiKey = "";
-config.grokApiKey = "";
 
 const app = require("../app");
 const aiService = require("../services/aiService");
