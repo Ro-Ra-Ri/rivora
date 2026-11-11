@@ -1,8 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import {
+  IconBolt,
+  IconClock,
+  IconLock,
+  IconSparkle,
+} from "../components/Icons";
+import Mascot from "../components/Mascot";
 import { useTheme } from "../context/ThemeContext";
 import { emitSubmitAnswer } from "../socket";
 import { answerLocked } from "../store/gameSlice";
+import { getSkin } from "../theme/skin";
 import {
   playAnswerLock,
   playCountdownTick,
@@ -12,462 +20,326 @@ import {
 
 const OPTION_KEYS = ["A", "B", "C", "D"];
 
-// Desain Kartu Opsi 4 Warna Mencolok (Tactile 3D Arcade Cards)
-const OPTION_STYLES = [
+// 4 Warna Pilihan Khas Plop (Playful, High Contrast, Solid Tactile Borders)
+const PLOP_OPTIONS = [
   {
-    // A: Indigo
-    cardDark:
-      "bg-[#1a1d3a] border-2 border-b-4 border-indigo-400/80 hover:bg-[#22264d] hover:border-indigo-300 text-white shadow-[0_12px_30px_rgba(79,70,229,0.2)]",
-    cardLight:
-      "bg-indigo-50/90 border-2 border-b-4 border-indigo-400 hover:bg-indigo-100/90 hover:border-indigo-600 text-indigo-950 shadow-sm",
-    badge: "bg-indigo-600 border-2 border-indigo-300 text-white",
-    selectedDark:
-      "bg-indigo-600/40 border-2 border-b-4 border-indigo-300 ring-4 ring-indigo-500/40 text-white shadow-[0_0_32px_rgba(99,102,241,0.5)]",
-    selectedLight:
-      "bg-indigo-600 border-2 border-b-4 border-indigo-900 ring-4 ring-indigo-400/40 text-white shadow-md",
+    bg: "#C5F23A", // Lime
+    text: "#0E1236",
+    badgeBg: "#0E1236",
+    badgeText: "#C5F23A",
   },
   {
-    // B: Sky / Cyan
-    cardDark:
-      "bg-[#15283d] border-2 border-b-4 border-sky-400/80 hover:bg-[#1b3450] hover:border-sky-300 text-white shadow-[0_12px_30px_rgba(14,165,233,0.2)]",
-    cardLight:
-      "bg-sky-50/90 border-2 border-b-4 border-sky-400 hover:bg-sky-100/90 hover:border-sky-600 text-sky-950 shadow-sm",
-    badge: "bg-sky-600 border-2 border-sky-300 text-white",
-    selectedDark:
-      "bg-sky-600/40 border-2 border-b-4 border-sky-300 ring-4 ring-sky-500/40 text-white shadow-[0_0_32px_rgba(14,165,233,0.5)]",
-    selectedLight:
-      "bg-sky-600 border-2 border-b-4 border-sky-900 ring-4 ring-sky-400/40 text-white shadow-md",
+    bg: "#8B9CFF", // Periwinkle
+    text: "#0E1236",
+    badgeBg: "#0E1236",
+    badgeText: "#8B9CFF",
   },
   {
-    // C: Amber / Gold
-    cardDark:
-      "bg-[#2d2214] border-2 border-b-4 border-amber-400/80 hover:bg-[#3d2e1a] hover:border-amber-300 text-white shadow-[0_12px_30px_rgba(245,158,11,0.2)]",
-    cardLight:
-      "bg-amber-50/90 border-2 border-b-4 border-amber-400 hover:bg-amber-100/90 hover:border-amber-600 text-amber-950 shadow-sm",
-    badge: "bg-amber-500 border-2 border-amber-200 text-zinc-950",
-    selectedDark:
-      "bg-amber-500/40 border-2 border-b-4 border-amber-300 ring-4 ring-amber-500/40 text-white shadow-[0_0_32px_rgba(245,158,11,0.5)]",
-    selectedLight:
-      "bg-amber-500 border-2 border-b-4 border-amber-800 ring-4 ring-amber-400/40 text-white shadow-md",
+    bg: "#FF7A66", // Coral
+    text: "#FFFFFF",
+    badgeBg: "#0E1236",
+    badgeText: "#FFFFFF",
   },
   {
-    // D: Emerald
-    cardDark:
-      "bg-[#132c27] border-2 border-b-4 border-emerald-400/80 hover:bg-[#193b34] hover:border-emerald-300 text-white shadow-[0_12px_30px_rgba(16,185,129,0.2)]",
-    cardLight:
-      "bg-emerald-50/90 border-2 border-b-4 border-emerald-400 hover:bg-emerald-100/90 hover:border-emerald-600 text-emerald-950 shadow-sm",
-    badge: "bg-emerald-600 border-2 border-emerald-300 text-white",
-    selectedDark:
-      "bg-emerald-600/40 border-2 border-b-4 border-emerald-300 ring-4 ring-emerald-500/40 text-white shadow-[0_0_32px_rgba(16,185,129,0.5)]",
-    selectedLight:
-      "bg-emerald-600 border-2 border-b-4 border-emerald-900 ring-4 ring-emerald-400/40 text-white shadow-md",
+    bg: "#FFC93C", // Sunflower Gold
+    text: "#0E1236",
+    badgeBg: "#0E1236",
+    badgeText: "#FFC93C",
   },
 ];
 
 export default function PlayPage() {
   const { isDark } = useTheme();
+  const skin = getSkin(isDark);
   const dispatch = useDispatch();
-  const {
-    room,
-    player,
-    currentQuestion,
-    questionStartedAt,
-    selectedChoice,
-    answerSubmitted,
-    answerProgress,
-    config,
-  } = useSelector((state) => state.game);
+
+  const { currentQuestion, room, player, selectedChoice, isLocked, config } =
+    useSelector((state) => state.game);
 
   const durationMs =
-    currentQuestion?.durationMs || config.questionTimeMs || 20000;
+    currentQuestion?.durationMs ||
+    (config.answerDurationSec ? config.answerDurationSec * 1000 : 20000);
 
   const [remainingMs, setRemainingMs] = useState(durationMs);
-  const lastBeepSecondRef = useRef(null);
+  const lastTickSecondRef = useRef(null);
 
-  // Suara saat soal baru muncul
+  // Play sound when new question arrives
   useEffect(() => {
     if (currentQuestion) {
-      lastBeepSecondRef.current = null;
       playQuestionStart();
+      lastTickSecondRef.current = null;
     }
   }, [currentQuestion?.index, currentQuestion]);
 
+  // High-frequency countdown timer
   useEffect(() => {
-    const startAt = questionStartedAt || Date.now();
+    const startedAt = currentQuestion?.startedAt
+      ? new Date(currentQuestion.startedAt).getTime()
+      : Date.now();
 
-    function updateClock() {
-      const elapsed = Date.now() - startAt;
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startedAt;
       const left = Math.max(durationMs - elapsed, 0);
       setRemainingMs(left);
-    }
 
-    updateClock();
-    const interval = setInterval(updateClock, 100);
+      const sec = Math.ceil(left / 1000);
+      if (sec <= 5 && sec > 0 && lastTickSecondRef.current !== sec) {
+        lastTickSecondRef.current = sec;
+        playCountdownTick(sec);
+      }
+      if (left === 0 && lastTickSecondRef.current !== 0) {
+        lastTickSecondRef.current = 0;
+        playTimeUp();
+      }
+    }, 100);
+
     return () => clearInterval(interval);
-  }, [questionStartedAt, durationMs, currentQuestion?.index]);
+  }, [durationMs, currentQuestion?.startedAt, currentQuestion?.index]);
 
-  const secondsLeft = Math.ceil(remainingMs / 1000);
-  const isTimeUp = remainingMs <= 0;
-  const isLocked = answerSubmitted || isTimeUp;
-  const roomCode = room?.code;
-  const playerId = player?.id;
-
-  // Efek suara detak timer setiap pergantian detik
-  useEffect(() => {
-    if (!currentQuestion) return;
-    if (lastBeepSecondRef.current === secondsLeft) return;
-    lastBeepSecondRef.current = secondsLeft;
-
-    if (secondsLeft === 0 && !answerSubmitted) {
-      playTimeUp();
-    } else if (secondsLeft > 0 && secondsLeft <= 10 && !answerSubmitted) {
-      playCountdownTick(secondsLeft);
-    }
-  }, [secondsLeft, answerSubmitted, currentQuestion]);
-
-  const handleSelectOption = useCallback(
-    (choiceIndex) => {
-      if (isLocked) return;
-
-      playAnswerLock(choiceIndex);
-      dispatch(answerLocked(choiceIndex));
-
-      if (roomCode && playerId) {
-        emitSubmitAnswer({
-          code: roomCode,
-          playerId,
-          choice: choiceIndex,
-        });
-      }
-    },
-    [isLocked, dispatch, roomCode, playerId]
-  );
-
-  useEffect(() => {
-    function handleKeyDown(e) {
-      if (isLocked) return;
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
-      ) {
-        return;
-      }
-
-      const key = e.key.toUpperCase();
-      if (key === "1" || key === "A") handleSelectOption(0);
-      if (key === "2" || key === "B") handleSelectOption(1);
-      if (key === "3" || key === "C") handleSelectOption(2);
-      if (key === "4" || key === "D") handleSelectOption(3);
+  const handleChoose = (choiceIndex) => {
+    if (isLocked || remainingMs <= 0 || !room?.code || !player?.id) {
+      return;
     }
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isLocked, handleSelectOption]);
+    playAnswerLock();
+    dispatch(answerLocked({ choice: choiceIndex }));
+
+    emitSubmitAnswer({
+      code: room.code,
+      playerId: player.id,
+      questionIndex: currentQuestion?.index ?? 0,
+      choice: choiceIndex,
+      timeRemainingMs: remainingMs,
+    });
+  };
 
   if (!currentQuestion) {
     return null;
   }
 
+  const options = currentQuestion.options || [];
+  const questionIndex = (currentQuestion.index ?? 0) + 1;
+  const totalQuestions = currentQuestion.total || room?.questionCount || 5;
+  const secondsLeft = Math.ceil(remainingMs / 1000);
   const progressPercent = Math.min(
     Math.max((remainingMs / durationMs) * 100, 0),
     100
   );
 
-  const hudSurface = isDark
-    ? "bg-[#161829] border-2 border-[#3a3f66] shadow-[0_20px_50px_rgba(0,0,0,0.75)]"
-    : "bg-white border-2 border-slate-300 shadow-[0_14px_36px_rgba(30,41,59,0.08)]";
-
-  const questionCardSurface = isDark
-    ? "bg-[#181b30] border-2 border-indigo-400/75 shadow-[0_24px_60px_rgba(0,0,0,0.8),0_0_35px_rgba(99,102,241,0.22)]"
-    : "bg-white border-2 border-indigo-400 shadow-[0_18px_45px_rgba(79,70,229,0.12)]";
-
-  let timerBadgeClass = isDark
-    ? "bg-[#20233a] border-2 border-indigo-400/60 text-white"
-    : "bg-indigo-50 border-2 border-indigo-300 text-indigo-950";
-  let timerBarClass = "bg-indigo-500";
-
-  if (secondsLeft <= 5) {
-    timerBadgeClass = isDark
-      ? "bg-rose-950 border-2 border-rose-400 text-rose-200 animate-pulse shadow-[0_0_20px_rgba(244,63,94,0.45)]"
-      : "bg-rose-100 border-2 border-rose-500 text-rose-900 animate-pulse";
-    timerBarClass = "bg-rose-500";
+  // Mascot dynamic mood
+  let mascotMood = "idle";
+  if (isLocked) {
+    mascotMood = "happy";
+  } else if (secondsLeft <= 5) {
+    mascotMood = "shock";
   } else if (secondsLeft <= 10) {
-    timerBadgeClass = isDark
-      ? "bg-amber-950/80 border-2 border-amber-400 text-amber-200"
-      : "bg-amber-100 border-2 border-amber-400 text-amber-900";
-    timerBarClass = "bg-amber-500";
+    mascotMood = "thinking";
   }
 
   return (
-    <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-8 pb-14 flex flex-col gap-6">
-      {/* HUD Atas: Nomor Soal, Topik, Progres Jawaban, dan Hitung Mundur */}
+    <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6">
+      {/* ======================================================== */}
+      {/* TOP HUD BAR: High-Contrast Tactile Bar                   */}
+      {/* ======================================================== */}
       <section
-        aria-label="Status soal berjalan"
-        className={`rounded-2xl p-4 sm:px-5 flex flex-col gap-3.5 ${hudSurface}`}
+        className="rounded-[32px] p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 transition-all"
+        style={{
+          backgroundColor: skin.cardBg,
+          borderColor: skin.cardBorder,
+          borderWidth: "3px",
+          boxShadow: skin.cardShadow,
+          color: skin.cardText,
+        }}
       >
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center flex-wrap gap-2">
-            <span
-              className={`px-3.5 py-1.5 rounded-xl font-['JetBrains_Mono',monospace] text-xs font-bold tracking-wider border-2 ${
-                isDark
-                  ? "bg-indigo-600 border-indigo-300 text-white"
-                  : "bg-indigo-600 border-indigo-800 text-white"
-              }`}
-            >
-              SOAL {currentQuestion.number} / {currentQuestion.total}
-            </span>
-            {room?.topic && (
+        {/* Left: Mascot & Question Counter */}
+        <div className="flex items-center gap-3.5">
+          <Mascot variant="face" size={68} mood={mascotMood} />
+          <div>
+            <div className="flex items-center gap-2">
               <span
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border-2 ${
-                  isDark
-                    ? "bg-[#20233a] border-[#3d426b] text-zinc-100"
-                    : "bg-slate-100 border-slate-300 text-slate-800"
-                }`}
+                className="px-3 py-1 rounded-full text-xs font-display font-bold uppercase tracking-wider border-2 border-[#0E1236] shadow-[0_2.5px_0_#0E1236]"
+                style={{ backgroundColor: skin.lime, color: skin.navy }}
               >
-                {room.topic}
+                Soal {questionIndex} / {totalQuestions}
               </span>
-            )}
-          </div>
-
-          <div className="flex items-center flex-wrap gap-2.5">
-            {answerProgress && (
-              <div
-                aria-live="polite"
-                title="Jumlah pemain yang sudah mengunci jawaban"
-                className={`px-3.5 py-1.5 rounded-xl border-2 text-xs font-bold tabular-nums inline-flex items-center gap-2 ${
-                  isDark
-                    ? "bg-[#20233a] border-emerald-400/60 text-emerald-200"
-                    : "bg-emerald-50 border-emerald-300 text-emerald-900"
-                }`}
-              >
-                <span
-                  aria-hidden="true"
-                  className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"
-                />
-                <span>
-                  {answerProgress.answeredCount}/{answerProgress.totalPlayers}{" "}
-                  menjawab
-                </span>
-              </div>
-            )}
-
-            <div
-              role="timer"
-              aria-label={`Sisa waktu ${secondsLeft} detik`}
-              className={`min-w-[92px] px-4 py-1.5 rounded-xl font-['JetBrains_Mono',monospace] text-base sm:text-lg font-bold tabular-nums inline-flex items-center justify-center gap-2 ${timerBadgeClass}`}
-            >
-              <svg
-                width="17"
-                height="17"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
-              <span>{secondsLeft}s</span>
+              <span className="text-xs font-sans font-bold opacity-75">
+                {room?.topic || "Kuis"}
+              </span>
             </div>
+            <p className="text-xs font-display font-bold opacity-70 mt-1">
+              {isLocked
+                ? "✓ Jawabanmu sudah terkunci! Menunggu ronde usai..."
+                : "Pilih 1 jawaban paling tepat sebelum waktu habis!"}
+            </p>
           </div>
         </div>
 
-        <div
-          aria-hidden="true"
-          className={`w-full h-2.5 rounded-full overflow-hidden border ${
-            isDark
-              ? "bg-[#0d0e1a] border-[#343859]"
-              : "bg-slate-200 border-slate-300"
-          }`}
-        >
+        {/* Right: Digital Timer Counter (Chunky Box) */}
+        <div className="flex items-center gap-3">
           <div
-            className={`h-full rounded-full transition-all duration-100 ease-linear ${timerBarClass}`}
-            style={{ width: `${progressPercent}%` }}
-          />
+            className={`px-4 py-2 rounded-2xl flex items-center gap-2 border-2.5 border-[#0E1236] transition-all duration-200 ${
+              secondsLeft <= 5 ? "animate-heartbeat" : ""
+            }`}
+            style={{
+              backgroundColor: secondsLeft <= 5 ? skin.coral : skin.navy,
+              color: "#FFFFFF",
+              boxShadow: "0 4px 0 #0E1236",
+            }}
+          >
+            <IconClock size={18} />
+            <span className="font-display font-bold text-2xl tracking-tight">
+              {secondsLeft}s
+            </span>
+          </div>
+
+          <div
+            className="px-3.5 py-2 rounded-2xl flex items-center gap-1.5 border-2"
+            style={{
+              backgroundColor: isDark ? "#0A0D28" : "#F4E7C5",
+              borderColor: skin.cardBorder,
+              boxShadow: `0 3px 0 ${skin.cardBorder}`,
+            }}
+          >
+            <IconBolt size={16} />
+            <span className="font-display font-bold text-xs">
+              Maks 1000 Pts
+            </span>
+          </div>
         </div>
       </section>
 
-      {/* Kartu Pertanyaan Utama Mencolok */}
-      <section
-        aria-labelledby="question-text"
-        className={`rounded-3xl p-6 sm:p-9 relative overflow-hidden ${questionCardSurface}`}
+      {/* Timer Progress Bar (Thick border) */}
+      <div
+        className="w-full h-4 rounded-full overflow-hidden p-0.5 border-2 border-[#0E1236]"
+        style={{
+          backgroundColor: isDark ? "#0A0D28" : "#E8DFC5",
+        }}
       >
         <div
-          aria-hidden="true"
-          className="absolute top-0 inset-x-0 h-2 bg-indigo-500"
+          className="h-full rounded-full transition-all duration-100 ease-linear"
+          style={{
+            width: `${progressPercent}%`,
+            backgroundColor:
+              secondsLeft <= 5 ? skin.coral : secondsLeft <= 10 ? "#FFC93C" : skin.lime,
+          }}
         />
-        <span
-          className={`inline-block font-['JetBrains_Mono',monospace] text-[11px] font-bold uppercase tracking-wider mb-2 ${
-            isDark ? "text-indigo-300" : "text-indigo-700"
-          }`}
+      </div>
+
+      {/* ======================================================== */}
+      {/* QUESTION CARD: High-Contrast Big Typography              */}
+      {/* ======================================================== */}
+      <section
+        className="rounded-[36px] p-7 sm:p-10 flex flex-col items-center text-center relative overflow-hidden transition-all"
+        style={{
+          backgroundColor: skin.cardBg,
+          borderColor: skin.cardBorder,
+          borderWidth: "3px",
+          boxShadow: skin.cardShadow,
+          color: skin.cardText,
+        }}
+      >
+        {/* Subtle decorative bubbles */}
+        <div
+          aria-hidden="true"
+          className="absolute -top-8 -left-8 w-24 h-24 rounded-full pointer-events-none opacity-40 border-2 border-[#0E1236]/20"
+          style={{ backgroundColor: skin.lime }}
+        />
+        <div
+          aria-hidden="true"
+          className="absolute -top-6 -right-6 w-20 h-20 rounded-full pointer-events-none opacity-40 border-2 border-[#0E1236]/20"
+          style={{ backgroundColor: skin.periwinkle }}
+        />
+
+        <div
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-display font-bold uppercase tracking-wider mb-4 border-2 border-[#0E1236] shadow-[0_2.5px_0_#0E1236]"
+          style={{ backgroundColor: skin.periwinkle, color: skin.navy }}
         >
-          PERTANYAAN #{currentQuestion.number}
-        </span>
-        <h1
-          id="question-text"
-          className="font-['Space_Grotesk',sans-serif] font-bold text-xl sm:text-2xl md:text-3xl leading-snug tracking-tight"
-        >
+          <IconSparkle size={14} />
+          <span>Pertanyaan #{questionIndex}</span>
+        </div>
+
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-bold leading-relaxed max-w-2xl">
           {currentQuestion.text}
-        </h1>
+        </h2>
       </section>
 
-      {/* 4 Kartu Pilihan Jawaban 4-Warna Kontras Tinggi */}
-      <section
-        role="group"
-        aria-label="Pilihan jawaban"
-        className="grid grid-cols-1 sm:grid-cols-2 gap-4"
-      >
-        {(currentQuestion.options || []).map((optionText, index) => {
+      {/* ======================================================== */}
+      {/* 4 CHUNKY 3D TACTILE OPTION BUTTONS (A, B, C, D)          */}
+      {/* ======================================================== */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {options.map((optionText, index) => {
+          const optStyle = PLOP_OPTIONS[index % PLOP_OPTIONS.length];
           const isSelected = selectedChoice === index;
-          const letter = OPTION_KEYS[index] || String(index + 1);
-          const style = OPTION_STYLES[index % OPTION_STYLES.length];
-
-          let cardClass = isDark ? style.cardDark : style.cardLight;
-          if (isSelected) {
-            cardClass = isDark ? style.selectedDark : style.selectedLight;
-          }
+          const letter = OPTION_KEYS[index] || `${index + 1}`;
 
           return (
             <button
               key={index}
               type="button"
-              onClick={() => handleSelectOption(index)}
-              disabled={isLocked}
-              aria-pressed={isSelected}
-              className={`min-h-[92px] p-4 sm:p-5 rounded-2xl text-left flex items-center gap-4 transition-all duration-200 cursor-pointer ${
-                !isLocked
-                  ? "hover:-translate-y-1 active:translate-y-0"
-                  : ""
-              } ${cardClass} ${
-                isLocked && !isSelected ? "opacity-45 cursor-not-allowed" : ""
-              }`}
+              disabled={isLocked || remainingMs <= 0}
+              onClick={() => handleChoose(index)}
+              className="group rounded-3xl p-5 sm:p-6 flex items-center gap-4 text-left font-display font-bold transition-all duration-150 cursor-pointer disabled:cursor-not-allowed select-none hover:-translate-y-0.5 active:translate-y-1 active:shadow-none"
+              style={{
+                backgroundColor: optStyle.bg,
+                color: optStyle.text,
+                border: "3px solid #0E1236",
+                boxShadow: isSelected
+                  ? "0 2px 0 #0E1236"
+                  : "0 6px 0 #0E1236",
+                transform: isSelected
+                  ? "translateY(4px)"
+                  : "none",
+                opacity: isLocked && !isSelected ? 0.45 : 1,
+              }}
             >
+              {/* Option Letter Badge (Chunky 3D square) */}
               <span
-                aria-hidden="true"
-                className={`w-12 h-12 rounded-xl font-['Space_Grotesk',sans-serif] text-lg font-bold inline-flex items-center justify-center shrink-0 shadow-sm ${style.badge}`}
+                className="w-12 h-12 rounded-2xl flex items-center justify-center font-display font-bold text-xl flex-shrink-0 border-2 border-[#0E1236] shadow-[0_3px_0_#0E1236] transition-transform group-hover:scale-105"
+                style={{
+                  backgroundColor: optStyle.badgeBg,
+                  color: optStyle.badgeText,
+                }}
               >
                 {letter}
               </span>
-              <span className="flex-1 text-base sm:text-lg font-bold leading-snug">
-                {optionText}
-              </span>
-              <span
-                aria-hidden="true"
-                className={`font-['JetBrains_Mono',monospace] text-xs font-bold px-2.5 py-1 rounded-lg border-2 shrink-0 ${
-                  isSelected
-                    ? "bg-white text-zinc-950 border-white"
-                    : isDark
-                      ? "bg-[#0d0e1a]/80 border-white/25 text-zinc-200"
-                      : "bg-white/90 border-slate-300 text-slate-700"
-                }`}
-              >
-                {isSelected ? "TERKUNCI" : `[${index + 1}]`}
-              </span>
+
+              {/* Option Text */}
+              <div className="flex-1 min-w-0">
+                <span className="text-base sm:text-lg leading-snug line-clamp-3 font-display">
+                  {optionText}
+                </span>
+              </div>
+
+              {/* Locked Badge if chosen */}
+              {isSelected && (
+                <div
+                  className="px-3 py-1.5 rounded-full text-xs font-display font-bold flex items-center gap-1.5 flex-shrink-0 border-2 border-[#0E1236]"
+                  style={{
+                    backgroundColor: skin.navy,
+                    color: skin.lime,
+                  }}
+                >
+                  <IconLock size={12} />
+                  <span>KUNCI</span>
+                </div>
+              )}
             </button>
           );
         })}
       </section>
 
-      {/* Status Bar Jawaban Terkirim / Waktu Habis */}
-      <section aria-live="polite">
-        {answerSubmitted ? (
-          <div
-            className={`p-4 sm:px-5 rounded-2xl border-2 flex items-center gap-3.5 ${
-              isDark
-                ? "bg-indigo-950/80 border-indigo-400 text-indigo-100"
-                : "bg-indigo-50 border-indigo-400 text-indigo-950"
-            }`}
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-              className="text-indigo-400 shrink-0"
-            >
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
-            <div className="text-xs sm:text-sm">
-              <strong className="block font-bold">
-                Jawaban {OPTION_KEYS[selectedChoice]} berhasil dikunci!
-              </strong>
-              <span className="font-medium opacity-90">
-                Menunggu pemain lain selesai menjawab atau waktu berakhir...
-              </span>
-            </div>
-          </div>
-        ) : isTimeUp ? (
-          <div
-            className={`p-4 sm:px-5 rounded-2xl border-2 flex items-center gap-3.5 ${
-              isDark
-                ? "bg-amber-950/80 border-amber-400 text-amber-100"
-                : "bg-amber-50 border-amber-400 text-amber-950"
-            }`}
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-              className="text-amber-400 shrink-0"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            <div className="text-xs sm:text-sm">
-              <strong className="block font-bold">Waktu menjawab habis</strong>
-              <span className="font-medium opacity-90">
-                Menyiapkan kunci jawaban dan klasemen sementara...
-              </span>
-            </div>
-          </div>
+      {/* Bottom Status Feedback */}
+      <div className="text-center font-sans font-bold text-xs">
+        {isLocked ? (
+          <span className="inline-block px-4 py-2 rounded-full bg-[#0E1236] text-[#C5F23A] border-2 border-[#0E1236] shadow-[0_3px_0_#0E1236]">
+            ✓ Pilihanmu sudah tersimpan! Jawaban benar akan dibuka saat timer habis.
+          </span>
         ) : (
-          <div
-            className={`text-center text-xs font-semibold ${
-              isDark ? "text-zinc-300" : "text-slate-600"
-            }`}
-          >
-            <span>
-              Klik salah satu kartu warna di atas atau tekan tombol{" "}
-              <kbd
-                className={`font-['JetBrains_Mono',monospace] text-[11px] font-bold px-2 py-0.5 rounded border-2 ${
-                  isDark
-                    ? "bg-[#161829] border-indigo-400/60 text-white"
-                    : "bg-white border-slate-300 text-slate-900"
-                }`}
-              >
-                1
-              </kbd>{" "}
-              –{" "}
-              <kbd
-                className={`font-['JetBrains_Mono',monospace] text-[11px] font-bold px-2 py-0.5 rounded border-2 ${
-                  isDark
-                    ? "bg-[#161829] border-indigo-400/60 text-white"
-                    : "bg-white border-slate-300 text-slate-900"
-                }`}
-              >
-                4
-              </kbd>{" "}
-              di keyboard.
-            </span>
-          </div>
+          <span className="opacity-75">
+            Klik salah satu tombol opsi di atas untuk mengunci jawabanmu sebelum waktu habis.
+          </span>
         )}
-      </section>
+      </div>
     </main>
   );
 }
