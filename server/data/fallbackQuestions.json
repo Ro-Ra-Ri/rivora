@@ -1,0 +1,80 @@
+{
+  "topic": "JavaScript dasar",
+  "questions": [
+    {
+      "text": "Kata kunci mana yang dipakai untuk mendeklarasikan variabel yang tidak boleh diberi nilai baru?",
+      "options": ["var", "let", "const", "static"],
+      "answerIndex": 2,
+      "explanation": "const membuat variabel tidak bisa diberi nilai baru (reassign). Isi array atau objek di dalamnya masih bisa diubah."
+    },
+    {
+      "text": "Apa hasil dari typeof 'halo' di JavaScript?",
+      "options": ["string", "text", "char", "word"],
+      "answerIndex": 0,
+      "explanation": "Teks di JavaScript bertipe string, jadi typeof 'halo' menghasilkan 'string'."
+    },
+    {
+      "text": "Method array manakah yang menambahkan elemen baru di akhir array?",
+      "options": ["pop()", "shift()", "push()", "unshift()"],
+      "answerIndex": 2,
+      "explanation": "push() menambah elemen di akhir array. pop() menghapus elemen terakhir, shift() menghapus elemen pertama, dan unshift() menambah elemen di awal."
+    },
+    {
+      "text": "Apa hasil dari 2 + '2' di JavaScript?",
+      "options": ["4", "22 (berupa string)", "NaN", "Error"],
+      "answerIndex": 1,
+      "explanation": "Jika salah satu sisi operator + adalah string, JavaScript menggabungkan keduanya sebagai teks, jadi hasilnya '22'."
+    },
+    {
+      "text": "Apa perbedaan operator === dengan ==?",
+      "options": [
+        "Hanya membandingkan tipe data",
+        "Menugaskan nilai ke variabel",
+        "Membandingkan alamat memori saja",
+        "Membandingkan nilai sekaligus tipe datanya"
+      ],
+      "answerIndex": 3,
+      "explanation": "=== (strict equality) membandingkan nilai dan tipe data tanpa konversi. == mengubah tipe data lebih dulu sebelum membandingkan."
+    },
+    {
+      "text": "Method array manakah yang membuat array baru dari hasil pengolahan setiap elemen?",
+      "options": ["filter()", "map()", "forEach()", "reduce()"],
+      "answerIndex": 1,
+      "explanation": "map() menjalankan fungsi pada tiap elemen dan mengembalikan array baru. filter() menyaring elemen, forEach() tidak mengembalikan array baru, dan reduce() menggabungkan array menjadi satu nilai."
+    },
+    {
+      "text": "Fungsi console.log() dipakai untuk apa?",
+      "options": [
+        "Menampilkan nilai ke konsol",
+        "Menghapus data di konsol",
+        "Membuat variabel baru",
+        "Menghentikan program"
+      ],
+      "answerIndex": 0,
+      "explanation": "console.log() menampilkan nilai ke konsol, sehingga sering dipakai untuk memeriksa isi variabel saat debugging."
+    },
+    {
+      "text": "Nilai manakah yang dianggap falsy di JavaScript?",
+      "options": [
+        "'0' (string berisi angka nol)",
+        "[] (array kosong)",
+        "{} (objek kosong)",
+        "0 (angka nol)"
+      ],
+      "answerIndex": 3,
+      "explanation": "Angka 0 termasuk nilai falsy, bersama false, '', null, undefined, dan NaN. String '0', array kosong, dan objek kosong justru dianggap truthy."
+    },
+    {
+      "text": "Bagaimana cara mengetahui jumlah elemen pada array bernama buah?",
+      "options": ["buah.size", "buah.length", "buah.count()", "length(buah)"],
+      "answerIndex": 1,
+      "explanation": "Array di JavaScript memiliki properti length, jadi jumlah elemen didapat dari buah.length (tanpa tanda kurung)."
+    },
+    {
+      "text": "Diberikan const kali = (a, b) => a * b; Apa hasil dari kali(3, 4)?",
+      "options": ["12", "7", "34", "undefined"],
+      "answerIndex": 0,
+      "explanation": "Arrow function tanpa kurung kurawal langsung mengembalikan hasil ekspresinya, yaitu 3 * 4 = 12."
+    }
+  ]
+}
